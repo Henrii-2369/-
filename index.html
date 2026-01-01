@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量改名专家 (直改版)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .ghost { opacity: 0.5; background: #e2e8f0; border: 2px dashed #94a3b8; }
+        .sortable-drag { opacity: 0; }
+        .status-icon { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="text-slate-900 flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-6 py-4 shadow-sm sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="bg-blue-600 p-2 rounded-lg text-white">
+                    <i data-lucide="refresh-cw" width="24" height="24"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900">批量改名专家 <span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-normal">直改版</span></h1>
+                    <p class="text-xs text-gray-500">免安装 • 本地运行 • 文件夹批量授权</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-2">
+                <button id="btnOpenFolder" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition shadow-md select-none">
+                    <i data-lucide="folder-open" width="18" height="18"></i>
+                    <span class="font-medium">选择文件夹</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Sidebar -->
+        <aside class="lg:col-span-4 space-y-6">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 sticky top-28">
+                <div class="flex items-center gap-2 mb-4 text-gray-800">
+                    <i data-lucide="settings" width="20" height="20"></i>
+                    <h2 class="font-semibold text-lg">命名规则</h2>
+                </div>
+
+                <div class="space-y-5">
+                    <!-- Mode Tabs -->
+                    <div class="flex bg-gray-100 p-1 rounded-lg">
+                        <button id="btnModePattern" class="flex-1 py-2 text-sm font-medium rounded-md transition-all bg-white shadow text-blue-600">
+                            模式匹配
+                        </button>
+                        <button id="btnModeReplace" class="flex-1 py-2 text-sm font-medium rounded-md transition-all text-gray-500 hover:text-gray-700">
+                            查找替换
+                        </button>
+                    </div>
+
+                    <!-- Config Inputs -->
+                    <div id="configPatternArea">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">文件名模式</label>
+                            <input type="text" id="inputPattern" value="文件_###" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="例如：照片_###">
+                            <p class="text-xs text-gray-500 mt-1">使用 <code>###</code> 代表编号，<code>{name}</code> 代表原名。</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">起始编号</label>
+                                <input type="number" id="inputStartNum" value="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">步长</label>
+                                <input type="number" id="inputStep" value="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="configReplaceArea" class="hidden">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">查找内容</label>
+                            <input type="text" id="inputReplaceTarget" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="输入查找内容">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">替换为</label>
+                            <input type="text" id="inputReplaceWith" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="输入替换内容">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                        <span class="text-sm font-medium text-gray-700">保留扩展名</span>
+                        <button id="btnToggleExt" class="w-11 h-6 flex items-center rounded-full p-1 transition-colors bg-blue-600">
+                            <div id="toggleExtDot" class="bg-white w-4 h-4 rounded-full shadow-md transform transition-transform translate-x-5"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                    <h3 class="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                        <i data-lucide="info" width="16" height="16"></i> 统计信息
+                    </h3>
+                    <ul class="text-sm text-blue-700 space-y-1">
+                        <li>文件总数：<span id="statTotal">0</span></li>
+                        <li>已选中：<span id="statSelected">0</span></li>
+                        <li class="pt-2 text-xs text-orange-600 font-medium border-t border-blue-200 mt-2">
+                            重要：请使用 Chrome/Edge 并选择“文件夹”以获取批量修改权限，避免重复弹窗。
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <section class="lg:col-span-8 flex flex-col h-full">
+            <!-- Toolbar -->
+            <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm mb-4 flex flex-wrap gap-2 items-center justify-between">
+                <div class="flex items-center gap-2 flex-1">
+                    <button id="btnSelectAll" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-md border border-gray-200 transition">
+                        <i data-lucide="check-square" width="16" height="16"></i> 全选
+                    </button>
+                    <button id="btnInvertSelect" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-md border border-gray-200 transition">
+                        <i data-lucide="refresh-cw" width="16" height="16"></i> 反选
+                    </button>
+                    <button id="btnRemoveSelected" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md border border-red-100 transition">
+                        <i data-lucide="trash-2" width="16" height="16"></i> 移除选中
+                    </button>
+                </div>
+                
+                <!-- Filter Input -->
+                <div class="relative w-full md:w-48 mt-2 md:mt-0">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-lucide="search" class="text-gray-400" width="14" height="14"></i>
+                    </div>
+                    <input type="text" id="inputFilter" class="block w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-md text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="筛选文件名...">
+                </div>
+
+                <div class="w-full text-xs text-gray-400 mt-2 hidden md:block border-t pt-2">
+                    提示：文件名已按自然数字顺序排序 (1, 2, 10)。拖拽可调整编号顺序。
+                </div>
+            </div>
+
+            <!-- List Container -->
+            <div class="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[500px]">
+                
+                <!-- Empty State -->
+                <div id="emptyState" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-10">
+                    <div class="mb-4 text-blue-100">
+                        <i data-lucide="folder-open" width="64" height="64"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900">请选择文件夹</h3>
+                    <p class="mb-6 text-center text-sm max-w-sm">点击右上角选择文件夹。这能授予浏览器一次性修改所有文件的权限，避免重复确认。</p>
+                </div>
+
+                <!-- File List -->
+                <div id="fileListContainer" class="flex-1 overflow-y-auto p-4 hidden">
+                    <!-- Dynamic Items will be injected here -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-4 flex justify-end">
+                <button id="btnExecuteRename" class="flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 bg-gray-400 cursor-not-allowed" disabled>
+                    <i data-lucide="save" width="20" height="20"></i>
+                    <span>执行重命名 (修改原文件)</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- App Logic -->
+    <script>
+        // --- State Management ---
+        let files = []; // Array of objects: { id, handle, originalName, newName, size, type, isSelected, status }
+        let directoryHandle = null;
+        let filterText = '';
+
+        let config = {
+            mode: 'pattern', // 'pattern' | 'replace'
+            pattern: '文件_###',
+            startNumber: 1,
+            step: 1,
+            useExtension: true,
+            replaceTarget: '',
+            replaceWith: ''
+        };
+
+        // --- DOM Elements ---
+        const btnOpenFolder = document.getElementById('btnOpenFolder');
+        const fileListEl = document.getElementById('fileListContainer');
+        const emptyStateEl = document.getElementById('emptyState');
+        const statTotalEl = document.getElementById('statTotal');
+        const statSelectedEl = document.getElementById('statSelected');
+        const btnExecuteRename = document.getElementById('btnExecuteRename');
+        const inputFilter = document.getElementById('inputFilter');
+
+        // Config Elements
+        const btnModePattern = document.getElementById('btnModePattern');
+        const btnModeReplace = document.getElementById('btnModeReplace');
+        const configPatternArea = document.getElementById('configPatternArea');
+        const configReplaceArea = document.getElementById('configReplaceArea');
+        const inputPattern = document.getElementById('inputPattern');
+        const inputStartNum = document.getElementById('inputStartNum');
+        const inputStep = document.getElementById('inputStep');
+        const inputReplaceTarget = document.getElementById('inputReplaceTarget');
+        const inputReplaceWith = document.getElementById('inputReplaceWith');
+        const btnToggleExt = document.getElementById('btnToggleExt');
+        const toggleExtDot = document.getElementById('toggleExtDot');
+
+        // --- Logic: Naming ---
+        function generateNewName(originalName, index, cfg) {
+            const lastDotIndex = originalName.lastIndexOf('.');
+            const extension = lastDotIndex !== -1 ? originalName.substring(lastDotIndex) : '';
+            const nameWithoutExt = lastDotIndex !== -1 ? originalName.substring(0, lastDotIndex) : originalName;
+
+            let resultName = '';
+
+            if (cfg.mode === 'replace') {
+                if (cfg.replaceTarget) {
+                    resultName = nameWithoutExt.split(cfg.replaceTarget).join(cfg.replaceWith);
+                } else {
+                    resultName = nameWithoutExt;
+                }
+            } else {
+                let pattern = cfg.pattern;
+                const currentNumber = cfg.startNumber + index * cfg.step;
+                
+                // Handle ###
+                const hashMatch = pattern.match(/#+/);
+                if (hashMatch) {
+                    const padLength = hashMatch[0].length;
+                    const numStr = currentNumber.toString().padStart(padLength, '0');
+                    pattern = pattern.replace(hashMatch[0], numStr);
+                }
+
+                // Handle {name}
+                pattern = pattern.replace(/{name}/g, nameWithoutExt);
+                resultName = pattern;
+            }
+
+            if (cfg.useExtension && extension) {
+                if (!resultName.toLowerCase().endsWith(extension.toLowerCase())) {
+                    resultName += extension;
+                }
+            }
+            return resultName;
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        function updateFileNames() {
+            // Recalculate based on current list order
+            // Note: Filter hides items but doesn't remove them from 'files' array, 
+            // but renaming index usually should be based on displayed list? 
+            // Standard batch renamers usually number based on the visible/active list.
+            // For simplicity and stability, we number based on the internal 'files' array order.
+            // If user wants to reorder filtered items, they can, but here we process all.
+            
+            // Actually, if a filter is active, maybe we only want to rename visible items?
+            // To keep it simple: We rename ALL selected items in the list.
+            
+            files = files.map((file, index) => ({
+                ...file,
+                newName: generateNewName(file.originalName, index, config)
+            }));
+            renderList();
+        }
+
+        // --- Logic: Rendering ---
+        function renderList() {
+            if (files.length === 0) {
+                fileListEl.classList.add('hidden');
+                emptyStateEl.classList.remove('hidden');
+            } else {
+                fileListEl.classList.remove('hidden');
+                emptyStateEl.classList.add('hidden');
+            }
+
+            fileListEl.innerHTML = '';
+
+            // Filter
+            const visibleFiles = files.filter(f => 
+                f.originalName.toLowerCase().includes(filterText)
+            );
+
+            visibleFiles.forEach((file) => {
+                const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(file.originalName);
+                
+                const div = document.createElement('div');
+                div.className = `group flex items-center gap-3 p-3 bg-white border rounded-lg mb-2 shadow-sm transition-colors ${file.isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`;
+                div.setAttribute('data-id', file.id);
+                
+                let statusHtml = '';
+                if (file.status === 'success') {
+                    statusHtml = `<span class="text-green-600 flex items-center gap-1 text-xs font-medium"><i data-lucide="check-circle" width="14"></i> 成功</span>`;
+                } else if (file.status === 'error') {
+                    statusHtml = `<span class="text-red-600 flex items-center gap-1 text-xs font-medium" title="${file.errorMsg || '未知错误'}"><i data-lucide="alert-circle" width="14"></i> 失败</span>`;
+                }
+
+                div.innerHTML = `
+                    <div class="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1 drag-handle">
+                        <i data-lucide="grip-vertical" width="20" height="20"></i>
+                    </div>
+                    <input type="checkbox" class="file-checkbox w-5 h-5 rounded border-gray-300 text-blue-600 cursor-pointer" ${file.isSelected ? 'checked' : ''} data-id="${file.id}">
+                    <div class="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
+                        <i data-lucide="${isImage ? 'image' : 'file-text'}" width="20" height="20"></i>
+                    </div>
+                    <div class="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex flex-col justify-center">
+                            <span class="text-xs text-gray-500 font-mono truncate" title="${file.originalName}">
+                                ${file.originalName.replace(new RegExp(filterText, 'gi'), match => `<span class="bg-yellow-200">${match}</span>`)}
+                            </span>
+                            <span class="text-[10px] text-gray-400">${formatBytes(file.size)}</span>
+                        </div>
+                        <div class="flex flex-col justify-center">
+                            <span class="text-sm font-semibold text-gray-800 truncate ${file.newName === file.originalName ? 'text-gray-400' : 'text-blue-600'}" title="${file.newName}">${file.newName}</span>
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-blue-500 font-medium">新文件名</span>
+                                ${statusHtml}
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-remove p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" data-id="${file.id}" title="从列表中移除（不删除文件）">
+                        <i data-lucide="x" width="18" height="18"></i>
+                    </button>
+                `;
+                fileListEl.appendChild(div);
+            });
+
+            // Update Icons
+            lucide.createIcons();
+            updateStats();
+        }
+
+        function updateStats() {
+            const selectedCount = files.filter(f => f.isSelected).length;
+            statTotalEl.textContent = files.length;
+            statSelectedEl.textContent = selectedCount;
+
+            if (selectedCount > 0) {
+                btnExecuteRename.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                btnExecuteRename.classList.add('bg-blue-600', 'hover:bg-blue-700', 'shadow-lg');
+                btnExecuteRename.disabled = false;
+            } else {
+                btnExecuteRename.classList.add('bg-gray-400', 'cursor-not-allowed');
+                btnExecuteRename.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'shadow-lg');
+                btnExecuteRename.disabled = true;
+            }
+        }
+
+        // --- Event Listeners ---
+
+        // Filter Input
+        inputFilter.addEventListener('input', (e) => {
+            filterText = e.target.value.toLowerCase();
+            renderList();
+        });
+
+        // Open Folder Logic (Reverted to showDirectoryPicker for batch permission)
+        btnOpenFolder.addEventListener('click', async () => {
+            if (!('showDirectoryPicker' in window)) {
+                alert("抱歉，您的浏览器不支持此功能。\n请使用 Chrome (111+) 或 Edge 浏览器。");
+                return;
+            }
+
+            try {
+                // Request ReadWrite upfront for the whole folder
+                directoryHandle = await window.showDirectoryPicker({
+                    mode: 'readwrite',
+                    startIn: 'downloads'
+                });
+
+                // Clear existing
+                files = [];
+                filterText = '';
+                inputFilter.value = '';
+                
+                // Process directory
+                for await (const entry of directoryHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const fileData = await entry.getFile();
+                        files.push({
+                            id: Math.random().toString(36).substr(2, 9),
+                            handle: entry,
+                            originalName: entry.name,
+                            newName: entry.name,
+                            size: fileData.size,
+                            isSelected: true, // Select all by default
+                            status: 'pending'
+                        });
+                    }
+                }
+                
+                // Natural Sort: 1, 2, 10 instead of 1, 10, 2
+                files.sort((a, b) => a.originalName.localeCompare(b.originalName, undefined, { numeric: true, sensitivity: 'base' }));
+                
+                updateFileNames();
+
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error(err);
+                    alert("读取失败: " + err.message);
+                }
+            }
+        });
+
+        // Config Changes
+        function handleConfigChange() {
+            config.pattern = inputPattern.value;
+            config.startNumber = parseInt(inputStartNum.value) || 0;
+            config.step = parseInt(inputStep.value) || 1;
+            config.replaceTarget = inputReplaceTarget.value;
+            config.replaceWith = inputReplaceWith.value;
+            updateFileNames();
+        }
+        
+        [inputPattern, inputStartNum, inputStep, inputReplaceTarget, inputReplaceWith].forEach(el => {
+            el.addEventListener('input', handleConfigChange);
+        });
+
+        // Mode Switching
+        btnModePattern.addEventListener('click', () => {
+            config.mode = 'pattern';
+            btnModePattern.className = 'flex-1 py-2 text-sm font-medium rounded-md transition-all bg-white shadow text-blue-600';
+            btnModeReplace.className = 'flex-1 py-2 text-sm font-medium rounded-md transition-all text-gray-500 hover:text-gray-700';
+            configPatternArea.classList.remove('hidden');
+            configReplaceArea.classList.add('hidden');
+            updateFileNames();
+        });
+
+        btnModeReplace.addEventListener('click', () => {
+            config.mode = 'replace';
+            btnModeReplace.className = 'flex-1 py-2 text-sm font-medium rounded-md transition-all bg-white shadow text-blue-600';
+            btnModePattern.className = 'flex-1 py-2 text-sm font-medium rounded-md transition-all text-gray-500 hover:text-gray-700';
+            configReplaceArea.classList.remove('hidden');
+            configPatternArea.classList.add('hidden');
+            updateFileNames();
+        });
+
+        // Extension Toggle
+        btnToggleExt.addEventListener('click', () => {
+            config.useExtension = !config.useExtension;
+            if (config.useExtension) {
+                btnToggleExt.classList.replace('bg-gray-300', 'bg-blue-600');
+                toggleExtDot.classList.add('translate-x-5');
+            } else {
+                btnToggleExt.classList.replace('bg-blue-600', 'bg-gray-300');
+                toggleExtDot.classList.remove('translate-x-5');
+            }
+            updateFileNames();
+        });
+
+        // Toolbar Actions
+        document.getElementById('btnSelectAll').addEventListener('click', () => {
+            // Apply only to visible if filter is on? Usually better to apply to all or filtered.
+            // Let's apply to current visible files for better UX
+            const visibleIds = new Set(files.filter(f => f.originalName.toLowerCase().includes(filterText)).map(f => f.id));
+            
+            // Check if all visible are selected
+            const allVisibleSelected = files.filter(f => visibleIds.has(f.id)).every(f => f.isSelected);
+            
+            files = files.map(f => {
+                if (visibleIds.has(f.id)) {
+                    return { ...f, isSelected: !allVisibleSelected };
+                }
+                return f;
+            });
+            renderList();
+        });
+
+        document.getElementById('btnInvertSelect').addEventListener('click', () => {
+            const visibleIds = new Set(files.filter(f => f.originalName.toLowerCase().includes(filterText)).map(f => f.id));
+            files = files.map(f => {
+                 if (visibleIds.has(f.id)) {
+                    return { ...f, isSelected: !f.isSelected };
+                 }
+                 return f;
+            });
+            renderList();
+        });
+
+        document.getElementById('btnRemoveSelected').addEventListener('click', () => {
+            files = files.filter(f => !f.isSelected);
+            updateFileNames();
+        });
+
+        // Dynamic Event Delegation
+        fileListEl.addEventListener('click', (e) => {
+            const removeBtn = e.target.closest('.btn-remove');
+            if (removeBtn) {
+                const id = removeBtn.getAttribute('data-id');
+                files = files.filter(f => f.id !== id);
+                updateFileNames();
+                return;
+            }
+            const checkbox = e.target.closest('.file-checkbox');
+            if (checkbox) {
+                const id = checkbox.getAttribute('data-id');
+                const file = files.find(f => f.id === id);
+                if (file) {
+                    file.isSelected = checkbox.checked;
+                    updateStats();
+                }
+            }
+        });
+
+        // Drag and Drop (SortableJS)
+        new Sortable(fileListEl, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'ghost',
+            onEnd: function (evt) {
+                // Warning: Sortable works on DOM. When filtering, indices mismatch 'files' array.
+                // We should disable sorting when filtering to avoid data corruption.
+                if (filterText) return; 
+
+                const item = files.splice(evt.oldIndex, 1)[0];
+                files.splice(evt.newIndex, 0, item);
+                updateFileNames(); 
+            }
+        });
+
+        // EXECUTE RENAME LOGIC
+        btnExecuteRename.addEventListener('click', async () => {
+            const selectedFiles = files.filter(f => f.isSelected);
+            if (selectedFiles.length === 0) return;
+
+            if (!confirm(`即将对 ${selectedFiles.length} 个文件进行直接改名。\n\n因为您已授权文件夹权限，浏览器应不会再逐个询问。\n\n确认继续？`)) {
+                return;
+            }
+
+            const btnText = btnExecuteRename.querySelector('span');
+            const originalText = btnText.innerText;
+            btnText.innerText = '处理中...';
+            btnExecuteRename.disabled = true;
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const file of selectedFiles) {
+                if (file.originalName === file.newName) {
+                    file.status = 'success';
+                    continue;
+                }
+
+                try {
+                    if (file.handle.move) {
+                         await file.handle.move(file.newName);
+                    } else {
+                         throw new Error("API 不支持");
+                    }
+                    
+                    file.originalName = file.newName;
+                    file.status = 'success';
+                    successCount++;
+                } catch (err) {
+                    console.error(`Failed to rename ${file.originalName}:`, err);
+                    file.status = 'error';
+                    file.errorMsg = err.message;
+                    errorCount++;
+                }
+            }
+
+            renderList();
+            btnText.innerText = originalText;
+            updateStats();
+
+            setTimeout(() => {
+                if (errorCount === 0) {
+                    alert(`成功重命名 ${successCount} 个文件！`);
+                } else {
+                    alert(`操作完成。\n成功: ${successCount}\n失败: ${errorCount}`);
+                }
+            }, 300);
+        });
+
+        // Initial Icon Load
+        lucide.createIcons();
+    </script>
+</body>
+</html>

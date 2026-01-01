@@ -1,0 +1,5 @@
+{
+  "name": "批量改名专家",
+  "description": "一款强大的本地批量文件改名工具。支持拖拽排序、自动编号，并可打包下载重命名后的文件。",
+  "requestFramePermissions": []
+}
